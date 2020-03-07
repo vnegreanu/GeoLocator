@@ -1,0 +1,38 @@
+#define ANT_LON 0x721
+
+#define ANT_LAT 0x722
+
+#define ANT_ALT_H_POS_DR  0x723 (4x8[bytes0-3] - ALT_H, 1x8[byte4] - ALT_POS, 1x8[byte5] - ALT_DR_READY)
+
+#define ANT_COURSE_SPEED  0x724 (4x8[bytes0-3] - ALT_COURSE, 4x8[bytes4-7] - ALT_SPEED)
+
+#define ANT_UTC_DATE_TIME  0x725 (1x8[byte0] - ANT_UTC_DAY, 1x8[byte1] - ANT_UTC_MONTH, 1x8[byte2] - ANT_UTC_YEAR, 1x8[byte3] - ANT_UTC_SEC, 1x8[byte4] - ANT_UTC_MIN, 1x8[byte5] - ANT_UTC_HOUR)
+
+#define ANT_GPS_SAT_INFO  0x726 (1x8[byte0] - PRN, 1x8[byte1] - Elevation, 2x8[byte2-3] - Azimuth, 1x8[byte4] - SNR )
+
+#define ANT_GLONASS_SAT_INFO 0x727 (1x8[byte0] - PRN, 1x8[byte1] - Elevation, 2x8[byte2-3] - Azimuth, 1x8[byte4] - SNR )
+
+#define ANT_BEIDOU_SAT_INFO  0x728 (1x8[byte0] - PRN, 1x8[byte1] - Elevation, 2x8[byte2-3] - Azimuth, 1x8[byte4] - SNR )
+
+#define ANT_ACTIVE_GPGL_SAT_LIST_0  0x729
+
+#define ANT_ACTIVE_GPGL_SAT_LIST_1  0x730
+
+#define ANT_ACTIVE_GPGL_SAT_LIST_2  0x731
+
+#define ANT_ACTIVE_GPGL_SAT_LIST_3  0x732
+
+#define ANT_ACTIVE_BD_SAT_LIST_0   0x733
+
+#define ANT_ACTIVE_BD_SAT_LIST_1   0x734
+
+#define ANT_ACTIVE_BD_SAT_LIST_2   0x735
+
+#define ANT_ACTIVE_BD_SAT_LIST_3   0x736
+
+#define ANT_PDOP  0x737
+
+#define ANT_HDOP  0x738
+
+#define ANT_VDOP  0x739
+

@@ -1,0 +1,71 @@
+VERSION ""
+
+
+NS_ : 
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: HU
+VAL_TABLE_ PRN_BD 255 "Invalid" 37 "'PRN BD = 0x25'" 36 "'PRN BD = 0x24'" 35 "'PRN BD = 0x23'" 34 "'PRN BD = 0x22'" 33 "'PRN BD = 0x21'" 32 "'PRN BD = 0x20'" 31 "'PRN BD = 0x1F'" 30 "'PRN BD = 0x1E'" 29 "'PRN BD = 0x1D'" 28 "'PRN BD = 0x1C'" 27 "'PRN BD = 0x1B'" 26 "'PRN BD = 0x1A'" 25 "'PRN BD = 0x19'" 24 "'PRN BD = 0x18'" 23 "'PRN BD = 0x17'" 22 "'PRN BD = 0x16'" 21 "'PRN BD = 0x15'" 20 "'PRN BD = 0x14'" 19 "'PRN BD = 0x13'" 18 "'PRN BD = 0x12'" 17 "'PRN BD = 0x11'" 16 "'PRN BD = 0x10'" 15 "'PRN BD = 0x0F'" 14 "'PRN BD = 0x0E'" 13 "'PRN BD = 0x0D'" 12 "'PRN BD = 0x0C'" 11 "'PRN BD = 0x0B'" 10 "'PRN BD = 0x0A'" 9 "'PRN BD = 0x09'" 8 "'PRN BD = 0x08'" 7 "'PRN BD = 0x07'" 6 "'PRN BD = 0x06'" 5 "'PRN BD = 0x05'" 4 "'PRN BD = 0x04'" 3 "'PRN BD = 0x03'" 2 "'PRN BD = 0x02'" 1 "'PRN BD = 0x01'" 0 "Invalid" ;
+VAL_TABLE_ PRN_GPS_GLONASS 96 "'PRN = 0x60'" 95 "'PRN = 0x5F'" 94 "'PRN = 0x5E'" 93 "'PRN = 0x5D'" 92 "'PRN = 0x5C'" 91 "'PRN = 0x5B'" 90 "'PRN = 0x5A'" 89 "'PRN = 0x59'" 88 "'PRN = 0x58'" 87 "'PRN = 0x57'" 86 "'PRN = 0x56'" 85 "'PRN = 0x55'" 84 "'PRN = 0x54'" 83 "'PRN = 0x53'" 82 "'PRN = 0x52'" 81 "'PRN = 0x51'" 80 "'PRN = 0x50'" 79 "'PRN = 0x4F'" 78 "'PRN = 0x4E'" 77 "'PRN = 0x4D'" 76 "'PRN = 0x4C'" 75 "'PRN = 0x4B'" 74 "'PRN = 0x4A'" 73 "'PRN = 0x49'" 72 "'PRN = 0x48'" 71 "'PRN = 0x47'" 70 "'PRN = 0x46'" 69 "'PRN = 0x45'" 68 "'PRN = 0x44'" 67 "'PRN = 0x43'" 66 "'PRN = 0x42'" 65 "'PRN = 0x41'" 64 "'PRN = 0x40'" 63 "'PRN = 0x3F'" 62 "'PRN = 0x3E'" 61 "'PRN = 0x3D'" 60 "'PRN = 0x3C'" 59 "'PRN = 0x3B'" 58 "'PRN = 0x3A'" 57 "'PRN = 0x39'" 56 "'PRN = 0x38'" 55 "'PRN = 0x37'" 54 "'PRN = 0x36'" 53 "'PRN = 0x35'" 52 "'PRN = 0x34'" 51 "'PRN = 0x33'" 50 "'PRN = 0x32'" 49 "'PRN = 0x31'" 48 "'PRN = 0x30'" 47 "'PRN = 0x2F'" 46 "'PRN = 0x2E'" 45 "'PRN = 0x2D'" 44 "'PRN = 0x2C'" 43 "'PRN = 0x2B'" 42 "'PRN = 0x2A'" 41 "'PRN = 0x29'" 40 "'PRN = 0x28'" 39 "'PRN = 0x27'" 38 "'PRN = 0x26'" 37 "'PRN = 0x25'" 36 "'PRN = 0x24'" 35 "'PRN = 0x23'" 34 "'PRN = 0x22'" 33 "'PRN = 0x21'" 32 "'PRN = 0x20'" 31 "'PRN = 0x1F'" 30 "'PRN = 0x1E'" 29 "'PRN = 0x1D'" 28 "'PRN = 0x1C'" 27 "'PRN = 0x1B'" 26 "'PRN = 0x1A'" 25 "'PRN = 0x19'" 24 "'PRN = 0x18'" 23 "'PRN = 0x17'" 22 "'PRN = 0x16'" 21 "'PRN = 0x15'" 20 "'PRN = 0x14'" 19 "'PRN = 0x13'" 18 "'PRN = 0x12'" 17 "'PRN = 0x11'" 16 "'PRN = 0x10'" 15 "'PRN = 0x0F'" 14 "'PRN = 0x0E'" 13 "'PRN = 0x0D'" 12 "'PRN = 0x0C'" 11 "'PRN = 0x0B'" 10 "'PRN = 0x0A'" 9 "'PRN = 0x09'" 8 "'PRN = 0x08'" 7 "'PRN = 0x07'" 6 "'PRN = 0x6'" 5 "'PRN = 0x5'" 4 "'PRN = 0x04'" 3 "'PRN = 0x03'" 2 "'PRN = 0x02'" 1 "'PRN = 0x01'" 255 "Invalid" 0 "Invalid" ;
+
+
+BO_ 256 NM_Ring: 8 HU
+
+
+
+EV_ Env_NMRingData6: 0 [0|255] "" 0 1 DUMMY_NODE_VECTOR0 Vector__XXX;
+
+EV_ Env_NMRingData5: 0 [0|255] "" 0 2 DUMMY_NODE_VECTOR0 Vector__XXX;
+
+EV_ Env_NMRingData4: 0 [0|255] "" 0 3 DUMMY_NODE_VECTOR0 Vector__XXX;
+
+EV_ Env_NMRingData3: 0 [0|255] "" 0 4 DUMMY_NODE_VECTOR0 Vector__XXX;
+
+EV_ Env_NMRingData2: 0 [0|255] "" 0 5 DUMMY_NODE_VECTOR0 Vector__XXX;
+
+EV_ Env_NMRingData1: 0 [0|255] "" 0 6 DUMMY_NODE_VECTOR0 Vector__XXX;
+
+BA_DEF_  "BusType" STRING ;
+BA_DEF_ BU_  "NodeLayerModules" STRING ;
+BA_DEF_ BU_  "ECU" STRING ;
+BA_DEF_ BU_  "CANoeJitterMax" INT 0 0;
+BA_DEF_ BU_  "CANoeJitterMin" INT 0 0;
+BA_DEF_ BU_  "CANoeDrift" INT 0 0;
+BA_DEF_ BU_  "CANoeStartDelay" INT 0 0;
+BA_DEF_DEF_  "BusType" "";
+BA_DEF_DEF_  "NodeLayerModules" "";
+BA_DEF_DEF_  "ECU" "";
+BA_DEF_DEF_  "CANoeJitterMax" 0;
+BA_DEF_DEF_  "CANoeJitterMin" 0;
+BA_DEF_DEF_  "CANoeDrift" 0;
+BA_DEF_DEF_  "CANoeStartDelay" 0;
+

@@ -1,0 +1,725 @@
+/*@!Encoding:1252*/
+variables 
+{
+//=============GLOBAL_TYPES==================
+  _align(2) struct GpsInfo
+  {
+      dword  HighLon;
+      dword  LowLon;
+      dword  HighLat;
+      dword  LowLat;
+      dword  Alt;
+      byte   Pos;
+      byte   DrReady;
+      dword  Heading;
+      dword  Speed;
+      byte   Sec;
+      byte   Min;
+      byte   Hour;
+      byte   Day;
+      byte   Month;
+      byte   Year;
+      dword  Pdop;
+      dword  Hdop;
+      dword  Vdop;     
+  }__GpsInfo;
+  
+//=============GLOBAL_VARIABLES===============
+
+  dword __UdpSocketHandle = 0;
+  byte __UdpSocketValid = 1;
+  long __UdpSocketCloseResult = 0;
+  long __UdpSocketSendResult = 0;
+  char __UdpErrorText[100];
+  //byte __SendTestSingleFrame[5]={0x53, 0x68, 0x6f, 0x72, 0x74};
+  char __errorMsg[12][100] = {"Timeout waiting for CF",
+                              "Timeout waiting for FC",
+                              "Received Wrong SN",
+                              "TxBusy, only one transmission possible at the same time",
+                              "Received unexpected PDU",
+                              "Timeout while trying to send a CAN frame",
+                              "Too many FC sent",
+                              "Receiver buffer overflow",
+                              "Wrong parameter",
+                              "Invalid flow status received",
+                              "Transfer has been aborted explicitly",
+                              "No data provided for transmission in time"
+                             };  
+  
+
+  int __NM_SleepMode = 0;
+  int __NM_Active = 1; 
+  int __NM_BusActive = 1;
+  int __NM_SleepInd = 0;
+  int __NM_WriteRingReq;
+  long __NM_RingDataSize = 6;
+  byte __NM_RingData[6];
+  dword __NM_ActualConfig;
+  int __NM_SendAppMsg;
+  
+//=============TIMER_STRUCT=====================
+  long tm[9];
+
+//=============TIMERS===========================
+  timer delay1sec;
+  msTimer delay1500ms;
+  timer delay2secTP;
+  msTimer delayNM100ms;
+  
+//============MESSAGES==========================
+message NM_Ring apNMMsg;
+  
+//=============CONSTANTS========================
+  char MONTH_OFFSET = 1;
+  //year is retrieved as the number after 1900. e.g. 2017 will be 117.
+  char YEAR_OFFSET = 100;
+  
+  int SOCKET_TIMER_OFFSET = 1500;
+  
+  long UDP_SOCKET_WSA_IO_PENDING = 997;
+  
+  dword UDP_SERVER_PORT = 9999;
+  
+  char CLIENT_ADDRESS[15] = "127.0.0.1";
+  
+  dword UDP_CLIENT_PORT = 8888;
+  
+  dword ISOTP_BLOCK_SIZE = 8;
+  
+  dword ISOTP_ST_MIN = 0;
+  
+  const ISOTP_NORMAL_ADDRESING_MODE = 0;
+  
+  const ISOTP_MAX_LENGTH = 1000;
+  
+  int ISOTP_TIMER_OFFSET = 2;
+  
+  const ISOTP_CHANNELS = 5;
+  
+  const LONG_LAT_CAN_ID = 0x720;
+  
+  const DATE_AND_TIME_CAN_ID = 0x721;
+  
+  const DOP_CAN_ID = 0x722;
+  
+  const SAT_NUMBER_CAN_ID = 0x723;
+  
+  const SAT_INFO_CAN_ID= 0x724;
+  
+  int GPS_POSITION_CAN_PAYLOAD = 30;
+  
+  int DATE_AND_TIME_CAN_PAYLOAD = 6;
+  
+  int DOP_CAN_PAYLOAD = 12;
+  
+  //5 bytes per SAT B0=PRN, B1=Elevation, B2-B3 Azimuth, B4=SNR
+  //max 32 satelites
+  const MAX_PAYLOAD_SAT_INFO = 160;
+  
+  dword __socket_size_buffer = __size_of(struct GpsInfo) + MAX_PAYLOAD_SAT_INFO + 1;
+  
+  dword __IsoTpRxIds[ISOTP_CHANNELS] = {LONG_LAT_CAN_ID, 
+                                        DATE_AND_TIME_CAN_ID, 
+                                        DOP_CAN_ID, 
+                                        SAT_NUMBER_CAN_ID, 
+                                        SAT_INFO_CAN_ID
+                                       };
+  
+  dword __IsoTpFCIds[ISOTP_CHANNELS] = {0x7D1, 0x7D1, 0x7D1, 0x7D1, 0x7D1};
+  
+  long __IsoTpChannelHandle[ISOTP_CHANNELS] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  
+  byte __socket_send_buffer[__size_of(struct GpsInfo) + MAX_PAYLOAD_SAT_INFO + 1];  
+  
+  int NM_SEND_TIMER = 100;  
+  
+}
+
+//=============INTERNAL_FUNCTIONS================
+void UdpSocketInitStruct()
+{ 
+   int i  = 0;
+  __GpsInfo.HighLon = 0;
+  __GpsInfo.LowLon  = 0;
+  __GpsInfo.HighLat = 0;
+  __GpsInfo.LowLat  = 0;
+  __GpsInfo.Alt     = 0;
+  __GpsInfo.Pos     = 0;
+  __GpsInfo.DrReady = 0;
+  __GpsInfo.Heading = 0;
+  __GpsInfo.Speed   = 0;
+  __GpsInfo.Sec     = 0;
+  __GpsInfo.Min     = 0;
+  __GpsInfo.Hour    = 0;
+  __GpsInfo.Day     = 0;
+  __GpsInfo.Month   = 0;
+  __GpsInfo.Year    = 0;
+  __GpsInfo.Pdop    = 0;
+  __GpsInfo.Hdop    = 0;
+  __GpsInfo.Vdop    = 0;
+  
+  for (i = 0; i < __socket_size_buffer ; i++ ) 
+  {
+   __socket_send_buffer[i] = 0; 
+  } 
+}
+
+void UdpSocketOpen() 
+{
+  //open UDP socket for transmiting the latitude and longitude
+  __UdpSocketHandle = UdpOpen(0,UDP_SERVER_PORT);
+  
+  //check if socket valid
+  if (__UdpSocketHandle == ~0)
+  {
+    write("UdpOpen socket failed: Result %d", IpGetLastError());
+    __UdpSocketValid = 0;
+  }
+  else 
+  { 
+    //init the socket structure
+    UdpSocketInitStruct();
+  }
+}
+
+void UdpSocketTransmit(byte data_to_send[]) 
+{
+  //send the filled structure on socket
+  if(__UdpSocketValid) 
+  {
+    /* We'll use this type of header
+    long UdpSendTo( dword socket, dword address, dword port, struct data[], dword size)
+    */
+    
+    __UdpSocketSendResult = UdpSendTo(__UdpSocketHandle, 
+                                      IpGetAddressAsNumber(CLIENT_ADDRESS), 
+                                      UDP_CLIENT_PORT, 
+                                      data_to_send, 
+                                      __socket_size_buffer);
+    
+    // Check for send error on udp socket
+    if ( (__UdpSocketSendResult != 0) && (IpGetLastSocketError(__UdpSocketHandle) != UDP_SOCKET_WSA_IO_PENDING) )
+    {
+      IpGetLastSocketErrorAsString(__UdpSocketHandle, __UdpErrorText, elcount(__UdpErrorText));
+      write("UdpSendTo failed, %s -> Result %d)", __UdpErrorText, IpGetLastSocketError(__UdpSocketHandle));
+    }  
+  } 
+}
+
+void UdpSocketClose()
+{
+  //close opened socket
+  __UdpSocketCloseResult = UdpClose(__UdpSocketHandle);
+
+  // Check for error
+  if (__UdpSocketCloseResult != 0)
+  {
+    IpGetLastSocketErrorAsString(__UdpSocketHandle, __UdpErrorText, elcount(__UdpErrorText));
+    write("UdpClose failed %s -> Result %d", __UdpErrorText, IpGetLastSocketError(__UdpSocketHandle));
+  }
+}
+
+void IsoTpInit() 
+{
+  int i;
+  for (i = 0; i < ISOTP_CHANNELS; i++) 
+  {
+    //create ISOTP channel connection
+    __IsoTpChannelHandle[i] = CanTpCreateConnection(ISOTP_NORMAL_ADDRESING_MODE);
+    
+    //set the specific RX and TX identifiers
+    CanTpSetRxIdentifier(__IsoTpChannelHandle[i], __IsoTpRxIds[i]);
+    CanTpSetTxIdentifier(__IsoTpChannelHandle[i], __IsoTpFCIds[i]);
+    
+    //set the connection parameters Block size and ST min
+    CanTpSetBlockSize(__IsoTpChannelHandle[i], ISOTP_BLOCK_SIZE);
+    CanTpSetSTmin(__IsoTpChannelHandle[i], ISOTP_ST_MIN );
+  }
+  
+}
+
+void IsotpErrorCodeToMsg(long errno)
+{
+  write("Error message: %s", __errorMsg[errno]);
+}
+
+void IsoTpClose(void) 
+{
+  int i;
+  for (i = 0; i < ISOTP_CHANNELS; i++) 
+  {
+    CanTpCloseConnection(__IsoTpChannelHandle[i]);
+  }
+}
+
+void GetGpsPosition(byte data[])
+{
+      if(GPS_POSITION_CAN_PAYLOAD == elcount(data)) 
+      {
+          __GpsInfo.LowLon =  data[3]           | 
+                             (data[2] << 8 )    |
+                             (data[1] << 16 )   |
+                             (data[0] << 24 );
+          
+          __GpsInfo.HighLon =  data[7]              |
+                               (data[6] << 8 )      |
+                               (data[5] << 16 )     |
+                               (data[4] << 24 );
+       
+          __GpsInfo.LowLat =  data[11]             | 
+                              (data[10] << 8 )     |
+                              (data[9] << 16 )     |
+                              (data[8] << 24 );
+        
+          __GpsInfo.HighLat =   data[15]          |
+                                (data[14] << 8 )  |
+                                (data[13] << 16 ) | 
+                                (data[12] << 24 );
+        
+           __GpsInfo.Alt = data[19]           |
+                           (data[18] << 8 )   |
+                           (data[17] << 16 )  | 
+                           (data[16] << 24 );
+        
+           __GpsInfo.Pos = data[20];
+        
+           __GpsInfo.DrReady = data[21];
+        
+           __GpsInfo.Heading = data[25]           |
+                               (data[24] << 8 )   |
+                               (data[23] << 16 )  | 
+                               (data[22] << 24 );
+        
+            __GpsInfo.Speed = data[29]           |
+                              (data[28] << 8 )   |
+                              (data[27] << 16 )  | 
+                              (data[26] << 24 );
+        
+        
+                                
+  
+          memcpy(__socket_send_buffer, __GpsInfo);
+      }
+      else 
+      {
+        write("Message payload for CAN id 0x%x is different than %d",LONG_LAT_CAN_ID, GPS_POSITION_CAN_PAYLOAD);
+      }
+}
+
+
+void GetDateAndTime(byte data[])
+{
+   if(DATE_AND_TIME_CAN_PAYLOAD == elcount(data)) 
+    {
+        __GpsInfo.Day   = data[0];
+        __GpsInfo.Month = data[1];
+        __GpsInfo.Year  = data[2];
+        __GpsInfo.Sec   = data[3];
+        __GpsInfo.Min   = data[4];
+        __GpsInfo.Hour  = data[5];
+        memcpy(__socket_send_buffer, __GpsInfo);
+    }
+    else 
+    {
+      write("Message payload for CAN id 0x%x is different than %d",DATE_AND_TIME_CAN_ID, DATE_AND_TIME_CAN_PAYLOAD);
+    }
+}
+
+void GetDop(byte data[])
+{
+    if(DOP_CAN_PAYLOAD == elcount(data)) 
+    {
+          __GpsInfo.Pdop =  data[3]           | 
+                           (data[2] << 8 )    |
+                           (data[1] << 16 )   |
+                           (data[0] << 24 );
+          
+          __GpsInfo.Hdop =  data[7]          |
+                            (data[6] << 8 )  |
+                            (data[5] << 16 ) |
+                            (data[4] << 24 );
+       
+          __GpsInfo.Vdop =  data[11]              | 
+                            (data[10] << 8 )      |
+                            (data[9] << 16 )      |
+                            (data[8] << 24 ); 
+      
+          memcpy(__socket_send_buffer, __GpsInfo);
+    }
+    else 
+    {
+      write("Message payload for CAN id 0x%x is different than %d",DOP_CAN_ID, DOP_CAN_PAYLOAD);
+    }
+}
+
+void GetSatId(byte data[]) 
+{
+  int i = 0;
+  for (i=0; i < elcount(data); i++) 
+  {
+    write(" 0x723 - SatId[%d] = %d",i,data[i]);
+  }
+}
+
+void GetSatInfo(byte data[]) 
+{
+  int i = 0;  
+  int j = 0 ;
+  const SAT_INFO_PER_SAT = 5;
+  const MAX_NUMBER_OF_SATTELITES = MAX_PAYLOAD_SAT_INFO / SAT_INFO_PER_SAT;
+  
+  _align(1) struct SatInfo
+  { 
+    byte SatId;
+    byte Elevation;
+    word Azimuth;
+    byte Snr;
+  };
+   
+  _align(1) struct SatInfoLength 
+  {
+    byte LengthSatInfo;
+    struct SatInfo _SatInfo[MAX_NUMBER_OF_SATTELITES];  
+  }_SatInfoLength;
+  
+  if (MAX_PAYLOAD_SAT_INFO < elcount(data)) 
+  {
+    write ("Payload to high!");
+  }
+  else 
+  {
+    //set the first location from local struct to length of the buffer received from SAT INFO  
+    _SatInfoLength.LengthSatInfo = elcount(data);
+    
+   
+    //init the _SatInfoLength struct
+      for (i=0; i < (elcount(data))/SAT_INFO_PER_SAT; i++) 
+      { 
+          _SatInfoLength._SatInfo[i].SatId = data[i + j];
+          _SatInfoLength._SatInfo[i].Elevation = data[i + 1 + j];
+          //get the azimuth in big endian directly
+          _SatInfoLength._SatInfo[i].Azimuth = data[i + 3 + j] | (data[i + 2 + j] << 8);
+          _SatInfoLength._SatInfo[i].Snr = data[i + 4 + j];
+          j += SAT_INFO_PER_SAT - 1;
+    
+        //write(" 0x724 - SatId[%d] = %d",i, _SatInfoLength._SatInfo[i].SatId);
+      }
+      j=0;
+    //transfer everthing into global buffer to transmit
+    //do not alter the part of the buffer with GPSInfo 
+    //singature used -> void memcpy(byte dest[], int offset, struct source)
+    memcpy(__socket_send_buffer, __size_of(struct GpsInfo), _SatInfoLength);
+  
+  }
+}
+
+void NmInit(void) 
+{
+  //set the NM Sleep Mode to 0
+  __NM_SleepMode = 0;
+  //set the write request to 0
+  __NM_WriteRingReq = 0;
+  
+  //set the Set NM APP message flag to 0
+  __NM_SendAppMsg = 1;
+  
+  //set timer for NM
+  if (__NM_SendAppMsg) 
+  {
+    setTimer(delayNM100ms, NM_SEND_TIMER);
+  }
+  //call the Start/Stop procedure for NM
+  NmStartStop();
+}
+
+void NmStartStop(void) 
+{
+  if (__NM_Active) 
+  {
+    //switch NM on
+    TalkNM();
+   
+  }
+  else 
+  {
+    SilentNM();
+    //set the sleep mode to 1
+    __NM_SleepMode = 1;
+     //set sleep mode indication to 1
+    __NM_SleepInd = 1;
+  }
+}
+
+//=============EVENT_HANDLERS====================
+on start
+{
+  //set the timers at the start
+  setTimer(delay1sec, 1);
+  setTimer(delay1500ms,SOCKET_TIMER_OFFSET);
+  //setTimer(delay2secTP, ISOTP_TIMER_OFFSET);
+  
+  //open UDP socket
+  UdpSocketOpen();
+  
+  //set up the ISOTP library
+  IsoTpInit();
+  
+  //set up the NM library
+  NMInit();
+ 
+}
+
+on timer delay1sec 
+{
+  getLocalTime(tm);
+  
+// tm[0] -> (seconds)
+// tm[1] -> (minutes)
+// tm[2] -> (hours)
+// tm[3] -> (day of  the month)
+// tm[4] -> (month 0-11 format)
+// tm[5] -> (year - 2 digits)
+  
+ // m_UTC_DATE_TIME.ANT_UTC_SEC   = tm[0];
+ // m_UTC_DATE_TIME.ANT_UTC_MIN   = tm[1];
+ // m_UTC_DATE_TIME.ANT_UTC_HOUR  = tm[2];
+ // m_UTC_DATE_TIME.ANT_UTC_DAY   = tm[3];
+ // m_UTC_DATE_TIME.ANT_UTC_MONTH = tm[4] + MONTH_OFFSET;
+ // m_UTC_DATE_TIME.ANT_UTC_YEAR  = tm[5] - YEAR_OFFSET;
+  
+ // output(m_UTC_DATE_TIME);
+  
+  setTimer(delay1sec, 1);
+}
+
+on timer delay1500ms 
+{
+  //transmit payload over the UDP socket
+  UdpSocketTransmit(__socket_send_buffer);
+  
+  //restart socket transmission timer
+  setTimer(delay1500ms, SOCKET_TIMER_OFFSET);
+}
+
+on timer delay2secTP 
+{ 
+  /*debug purposes */
+  //OSEKTL_DataReq(__SendTestSingleFrame, 5);
+  //restart ISOTP timer
+  //setTimer(delay2secTP, ISOTP_TIMER_OFFSET);
+}
+
+on timer delayNM100ms 
+{
+
+  apNMMsg.BYTE(0)++;
+  output(apNMMsg);
+  if (__NM_SendAppMsg) 
+  {
+    setTimer(delayNM100ms, NM_SEND_TIMER);
+  }
+
+}
+
+on stopMeasurement
+{
+  //cancel timers
+  cancelTimer(delay1sec);
+  cancelTimer(delay1500ms);
+  //cancelTimer(delay2secTP);
+  
+  //close opened UDP socket
+  UdpSocketClose();
+  
+  //close the ISOTP connections
+  IsoTpClose();
+}
+
+//set permission for NM Ring Write Requests 
+//w - write NM ring request buffer
+on key 'w'
+{
+  __NM_WriteRingReq = 1;
+}
+
+//get the NM config 
+//i - info about config
+on key 'i'
+{
+  __NM_ActualConfig = GetConfig();
+  write("NM-Config is %lX",__NM_ActualConfig);
+}
+
+//set the NM config 
+//c - perform config settings
+on key 'c' 
+{
+  // Set desired net configuration and mask.
+  NMSetTargetConfig(0x40040);
+  NMSetConfigMask(0xffffff);
+  write("SollConfig=0x40040, Mask=0xffffff");
+}
+
+//get the actual NM status
+//s - status NM to be retrieved. 
+on key 's' 
+{
+  // Get actual status of network management.
+  write("Get Status of NM: %x",NMGetStatus());
+}
+
+//toggles the flag for sending the message
+//m - message to be sent.
+on key 'm'
+{
+  if(!__NM_SendAppMsg) 
+  {
+    write ("NM message timer has been started!");
+    __NM_SendAppMsg = 1;
+    setTimer(delayNM100ms, NM_SEND_TIMER);
+  }
+  else 
+  {
+    write ("NM message timer has been stoped!");
+    __NM_SendAppMsg = 0;
+    cancelTimer(delayNM100ms); 
+  }
+}
+
+
+//=============EXTERNAL_LIBRARIES_CALLBACKS======
+
+//ISOTP RX indication callback
+void CanTp_ReceptionInd(long connHandle, byte data[])
+{
+    dword local_id;
+    //find out the id
+    local_id = CanTpGetRxIdentifier(connHandle);
+  
+    
+    
+    switch (local_id) 
+    {
+      case LONG_LAT_CAN_ID:
+        GetGpsPosition(data); 
+        break;
+      case DATE_AND_TIME_CAN_ID:
+        GetDateAndTime(data);
+        break;
+      case DOP_CAN_ID:
+        GetDop(data);
+        break;
+      case SAT_NUMBER_CAN_ID:
+        //debug GetSatId(data);
+        break;
+      case SAT_INFO_CAN_ID:
+        GetSatInfo(data);
+      default:
+        break;
+    }
+
+    
+ 
+  
+}
+
+//ISTOP Error callback
+void CanTp_ErrorInd(long connHandle, long error)
+{
+    write("Enter error callback for ID 0x%x", CanTpGetRxIdentifier(connHandle));
+    write("The following error code occured : %d", error);
+    IsotpErrorCodeToMsg(error);
+}
+
+//NM Bus Sleep Callback
+void apBusSleep(void) 
+{
+  // normally, set CAN-Chip to OFF-State.
+  write("NM: apBusSleep called.");
+  __NM_SleepMode = 1;
+}
+
+//NM Can Sleep
+void apCanSleep(void) 
+{
+ //set CAN-Chip to Standby State
+ write("NM: apCanSleep called."); 
+}
+
+//NM Can Normal
+void apCanNormal(void)
+{
+  write("NM: apCanNormal called.");
+  __NM_SleepMode = 0;
+}
+
+//NM Can Wake Up
+void apCanWakeUp(void) 
+{ 
+  write("NM: apCanWakeUp called.");
+  
+  if(__NM_Active) 
+  {    
+    //if APP internal off set Sleepmode-indication
+    if(__NM_SleepInd) 
+    {
+      GotoMode_BusSleep();
+    }
+    else 
+    {
+      //Wake up NM
+      GotoMode_Awake();
+    }
+  }
+}
+
+//NM Can Off
+void apCanOff(void) 
+{
+  //set this flag to 0
+  __NM_BusActive = 0;
+  CanOffline();
+  write("NM: apCanOff called.");
+}
+
+//NM Can On
+void apCanOn(void)
+{
+  __NM_BusActive = 1;
+  CanOnline();
+  write("NM: apCanOn called.");
+}
+
+//NM Indication Ring Data
+void apIndRingData(void) 
+{
+  if(ReadRingData(__NM_RingDataSize,__NM_RingData)) 
+  {
+    putValue(Env_NMRingData6, __NM_RingData[0]);
+    putValue(Env_NMRingData5, __NM_RingData[1]);
+    putValue(Env_NMRingData4, __NM_RingData[2]);
+    putValue(Env_NMRingData3, __NM_RingData[3]);
+    putValue(Env_NMRingData2, __NM_RingData[4]);
+    putValue(Env_NMRingData1, __NM_RingData[5]);
+  }
+  
+  if (__NM_WriteRingReq)
+  {
+    //set the NM write request to 0
+    __NM_WriteRingReq=0;
+    
+    //prepare ring data
+    __NM_RingData[0] = getValue(Env_NMRingData6);
+    __NM_RingData[1] = getValue(Env_NMRingData5);
+    __NM_RingData[2] = getValue(Env_NMRingData4);
+    __NM_RingData[3] = getValue(Env_NMRingData3);
+    __NM_RingData[4] = getValue(Env_NMRingData2);
+    __NM_RingData[5] = getValue(Env_NMRingData1);
+    
+    //Transmit RingData
+    TransmitRingData(__NM_RingDataSize, __NM_RingData);
+  }
+}
+
+
+
